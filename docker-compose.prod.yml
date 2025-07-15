@@ -1,11 +1,11 @@
 services:
+  # In production should use AWS RDS or similar managed database service
   wordpress:
     build:
       context: .
-      dockerfile: wordpress.Dockerfile.prod # Using the production Dockerfile
-    # You might also remove port mappings or debugging volumes here
+      dockerfile: wordpress.Dockerfile.prod
     ports: []
   nginx:
     ports:
-      - "80:80" # Use standard port 80 in prod
+      - "80:80" # Port 80 for HTTP is standard for production, however if used with AWS API Gateway or similar, may need to instead rely on port 443 for HTTPS.
       - "443:443"

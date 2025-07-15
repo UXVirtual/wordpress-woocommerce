@@ -1,5 +1,4 @@
 services:
-  # Database Service: MariaDB
   db:
     image: mariadb:10.6
     container_name: wordpress_db
@@ -13,31 +12,26 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - wordpress_net
-
-  # WordPress Service: PHP-FPM
   wordpress:
     # Build the custom WordPress image using our new Dockerfile
     build:
       context: .
       dockerfile: wordpress.Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
     container_name: wordpress_app
     restart: always
-    # FIX: Run the container process as the current host user.
-    # This ensures files created in volumes have the correct ownership.
+    # Forces files created in wp-uploads folder have the correct ownership.
     user: "${UID}:${GID}"
     environment:
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: ${DB_USER}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
       WORDPRESS_DB_NAME: ${DB_NAME}
-      # This tells Xdebug where to find its configuration
-      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003"
-      # This activates the settings in xdebug.ini
       XDEBUG_MODE: "debug"
     volumes:
-      # This volume now contains all WordPress files and is shared with nginx.
       - wordpress_data:/var/www/html
-      # Your custom mounts will overlay on top of the shared volume.
       - ./wordpress/wp-content/plugins/wc-extension:/var/www/html/wp-content/plugins/wc-extension
       - ./wordpress/wp-content/uploads:/var/www/html/wp-content/uploads
       - ./xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
@@ -45,19 +39,14 @@ services:
       - db
     networks:
       - wordpress_net
-
-  # NGINX Service: Web Server
   nginx:
-    # Build the image from the Dockerfile in the current directory
     build: .
     container_name: wordpress_nginx
     restart: always
     ports:
       - "8080:80"
     volumes:
-      # Mount the shared volume from the wordpress service in read-only mode.
       - wordpress_data:/var/www/html:ro
-      # FIX: Also mount the uploads folder so NGINX can serve images directly.
       - ./wordpress/wp-content/uploads:/var/www/html/wp-content/uploads:ro
     depends_on:
       - wordpress

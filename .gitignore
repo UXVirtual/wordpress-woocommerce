@@ -37,15 +37,16 @@
 
 # All plugins
 #
-# Note: If you wish to whitelist plugins,
-# uncomment the next line
+# Ignore all plugins except the wc-extension plugin.
+# Add any additional plugins you want to whitelist below.
 /wordpress/wp-content/plugins/*
 !/wordpress/wp-content/plugins/wc-extension/
 
 # All themes
 #
 # Note: If you wish to whitelist themes,
-# uncomment the next line
-#/wp-content/themes
+# uncomment the next line and add exclusions below.
+#/wp-content/themes/*
 
+# Env configuration
 /.env

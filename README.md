@@ -13,6 +13,14 @@ This allows these to be versioned for convenience, however it is expected that a
 
 The `bitnami/nginx` container is quite sparse by design, only having the bare minimum binaries to run nginx, plus having the Wordpress app and web service running on separate containers further decreases the blast radius if rogue extensions get access. For maximum security, all 3x containers should be deployed in a single AWS VPC isolated from other applications with API gateway restricting traffic to port 443 and 80.
 
+## Features
+
+This Wordpress site supports a custom WooCommerce extension which adds several features to the stock WooCommerce plugin:
+
+* Engraving - All products in store have an optional engraving setting that can be turned on. This uses update_post_meta() to add an optional text string associated with the product cart line item. The text can be customized on the product detail page before clicking "Add to cart". A further enhancement would be an engraving up-sell in JavaScript as part of "Add to Cart" button on the store page that lists all products.
+
+* Loyalty Program - Users can be set to be part of a loyalty program in the admin panel. They receive 10% discount site-wide. Originally this was implemented as user_meta, however there were implications on being able to enhance that feature further, so this is instead achieved via a separate indexed table so queries can be made on users by their loyalty points amount. Loyalty points balances are shown on the My Account Dashboard page managed by WooCommerce. If a user has a loyalty points amount that is not NULL, they are considered to be in the program and their points balance will be displayed.
+
 ## Developers
 
 ## Installation
@@ -51,12 +59,30 @@ docker logs -f wordpress_app
 
 ### Logging
 
+#### Running Containers
+
 The bitnami nginx container is configured to not store logs on disk. In production these would be typically exposed to a logging service on whatever cloud hosting provider the container is deployed to (e.g. AWS CloudWatch).
 
 As a workaround, logs are redirected to `stdout`, so will be available to view in the Docker console or via the following command:
 
 ```
 docker logs wordpress_nginx
+```
+
+#### Xdebug Logs
+
+Run the following to watch Xdebug logs for any issues relating to remotely debugging the wordpress service:
+
+```
+docker-compose exec wordpress tail -f /tmp/xdebug.log
+```
+
+#### Stopped Containers
+
+You can examine the PHP wordpress services specific logs by running the following:
+
+```
+docker-compose logs wordpress
 ```
 
 ### DevOps & Deployment
