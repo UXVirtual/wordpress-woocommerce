@@ -1,0 +1,21 @@
+# Start from the official WordPress FPM image.
+# For production, it's best practice to pin to a specific version (e.g., wordpress:6.2-fpm)
+# to ensure consistent builds.
+FROM wordpress:6.8.1-php8.1-fpm
+
+# Set the working directory to the default WordPress location
+WORKDIR /var/www/html
+
+# Copy the entire local 'wordpress' directory from your machine (the build context)
+# into the image's web root. This includes WordPress core, your themes, and plugins.
+COPY ./wordpress /var/www/html/
+
+# Set the correct permissions for the copied files. The WordPress container
+# runs as the 'www-data' user by default. This user needs to own the files
+# to function correctly.
+RUN chown -R www-data:www-data /var/www/html
+
+# The base WordPress image will handle copying the core files and our new plugin
+# to /var/www/html. We just need to ensure permissions are correct for the web server.
+RUN chown -R www-data:www-data /usr/src/wordpress/wp-content/plugins/woocommerce
+

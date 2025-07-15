@@ -1,0 +1,11 @@
+services:
+  wordpress:
+    build:
+      context: .
+      dockerfile: wordpress.Dockerfile.prod # Using the production Dockerfile
+    # You might also remove port mappings or debugging volumes here
+    ports: []
+  nginx:
+    ports:
+      - "80:80" # Use standard port 80 in prod
+      - "443:443"
