@@ -11,7 +11,7 @@
  * Text Domain:       wc-extension
  * Domain Path:       /languages
  * WC requires at least: 8.0
- * WC tested up to:    9.1
+ * WC tested up to:   10.0.2
  */
 
 /** 
@@ -148,7 +148,10 @@ final class WC_Extension {
 		add_action('woocommerce_account_dashboard', [$this, 'display_loyalty_points_on_dashboard']);
 
 		// Custom Pricing Feature: Apply a 10% discount to all users in the loyalty program.
-		add_action('woocommerce_before_calculate_totals', [$this, 'apply_custom_pricing'], 10, 1);
+		add_filter('woocommerce_product_get_price', [$this, 'apply_loyalty_pricing'], 10, 2);
+    	add_filter('woocommerce_product_variation_get_price', [$this, 'apply_loyalty_pricing'], 10, 2);
+		add_filter('woocommerce_get_price_html', [$this, 'display_custom_loyalty_price_html'], 10, 2);
+
 
 		// Engraving Feature: Add custom engraving text field to product pages.
 		add_filter('woocommerce_add_cart_item_data', [$this, 'add_engraving_text_to_cart'], 10, 3);
@@ -227,30 +230,70 @@ final class WC_Extension {
     }
 
 	/**
-	 * Apply 10% discount to users who are in the loyalty program.
+     * Applies a 10% discount store-wide for users in the loyalty program.
+     *
+     * This function hooks into the product price calculation and applies the
+     * discount if the logged-in user is part of the loyalty program.
 	 * 
-	 * Skips if in the admin area is not an AJAX request - custom pricing should only
-	 * be applied on the frontend so indexed pages in search engines have correct pricing.
-	 * 
-	 * @param WC_Cart $cart The WooCommerce cart object.
-	 * @return void
-	 */
-	public function apply_custom_pricing($cart) {
-        if (is_admin() && !defined('DOING_AJAX') || !is_user_logged_in()) {
-            return;
+	 * Use a static variable to cache the user status for the duration of the page load
+	 * This stops multiple database queries for the same user on the same page load,
+	 * allowing this logic to run faster.
+     *
+     * @param float $price The original product price.
+     * @param WC_Product $product The product object.
+     * @return float The original or modified price.
+     */
+    public function apply_loyalty_pricing($price, $product) {
+        // Don't modify the price in the admin panel or for guests
+        if (is_admin() || !is_user_logged_in()) {
+            return $price;
         }
 
-        $user = wp_get_current_user();
-        $loyalty_status = $this->get_user_loyalty_status($user->ID);
+        static $loyalty_status = null;
+        if (is_null($loyalty_status)) {
+            $user_id = get_current_user_id();
+            $loyalty_status = $this->get_user_loyalty_status($user_id);
+        }
 
-        // Check if the user is in the loyalty program (i.e., not null).
+        // If the user is in the loyalty program (status is not null), apply the discount
         if (!is_null($loyalty_status)) {
-            foreach ($cart->get_cart() as $cart_item) {
-                $price = $cart_item['data']->get_regular_price();
-                $new_price = $price * 0.90; // 10% discount
-                $cart_item['data']->set_price($new_price);
+            $price = $price * 0.90; // 10% discount
+        }
+
+        return $price;
+    }
+
+	/**
+     * Customizes the price display on single product pages for loyalty members.
+	 * Only show for logged-in users who are in the loyalty program.
+	 * This is a common practice in e-commerce to show both the original price
+	 * and the discounted price.
+     *
+     * @param string $price_html The original price HTML.
+     * @param WC_Product $product The product object.
+     * @return string The original or modified price HTML.
+     */
+    public function display_custom_loyalty_price_html($price_html, $product) {
+        if (is_user_logged_in()) {
+            static $loyalty_status = null;
+            if (is_null($loyalty_status)) {
+                $user_id = get_current_user_id();
+                $loyalty_status = $this->get_user_loyalty_status($user_id);
+            }
+
+			if (!is_null($loyalty_status)) {
+                $regular_price_html = wc_price($product->get_regular_price());
+                $discounted_price_html = wc_price($product->get_price()); // This is already discounted by our other function
+
+                $price_html = sprintf(
+                    '<p class="price loyalty-price">Before: <del>%s</del><br>Your Price: <ins>%s</ins></p>',
+                    $regular_price_html,
+                    $discounted_price_html
+                );
             }
         }
+
+        return $price_html;
     }
 
 	/**
